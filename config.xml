@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<config>
+  <Bricks count="1">
+    <Brick>
+      <Coordinates>
+        <Point>
+          <x>149,73</x>
+          <y>44,108</y>
+        </Point>
+        <Point>
+          <x>154,03</x>
+          <y>46,577</y>
+        </Point>
+        <Point>
+          <x>149,77</x>
+          <y>45,084</y>
+        </Point>
+        <Point>
+          <x>154,10</x>
+          <y>47,686</y>
+        </Point>
+      </Coordinates>
+      <Scenario stepq="1">
+        <Step>
+          <StartTime>20</StartTime>
+          <FinishTime>50</FinishTime>
+          <Height>15</Height>
+        </Step>
+      </Scenario>
+    </Brick>
+  </Bricks>
+  <ObservationPoints count="2">
+    <Point>
+      <x>273,608</x>
+      <y>-17,975</y>
+    </Point>
+    <Point>
+      <x>80,42</x>
+      <y>13,10</y>
+    </Point>
+  </ObservationPoints>
+</config>
