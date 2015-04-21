@@ -77,7 +77,8 @@ namespace Wave_renew
 		Bitmap^ mainBitmap;
 		String^ mapFileName;
 		Thread^ calculationThread;
-		Thread^ drawingThread;
+
+			 Thread^ drawingThread;
 
 	public:
 		mainForm()
@@ -215,13 +216,25 @@ namespace Wave_renew
 
 		void showBottom()
 		{
+
 			for (int y = 0; y < mapSizeY; y++)
 			{
 				for (int x = 0; x < mapSizeX; x++)
 				{
-					this->mainBitmap->SetPixel(x, mapSizeY - 1 - y, bottom2color(terrian[y][x]));
+					try
+					{
+						this->mainBitmap->SetPixel(x, mapSizeY - 1 - y, bottom2color(terrian[y][x]));
+					}
+					catch(...)
+					{
+						double t4 = terrian[y][x-3];
+						double t3 = terrian[y][x-2];
+						double t2 = terrian[y][x-1];
+						double t1 = terrian[y][x];
+					}
 				}
 			}
+
 
 			this->Invoke_updateDraw();
 		}
@@ -333,10 +346,133 @@ namespace Wave_renew
 			outFile.close();
 		}
 
-		bool loadMap()
+		bool loadMapDat()
 		{
 			ifstream mapFile;
+			
+			marshal_context^ context = gcnew marshal_context();
+			const char* tmpFileName = context->marshal_as<const char*>(mapFileName);
+				
+			mapFile.open(tmpFileName, ios::in);
+			if (!mapFile)
+			{
+				MessageBox::Show("Input file not found!", "Error!", MessageBoxButtons::OK, MessageBoxIcon::Error);
+				return false;
+			}
+			delete context;
 
+			float minx;
+			float maxx;
+			float miny;
+			float maxy;
+			float longitude;
+			float latitude;
+			float depth;
+			bool begin=true;
+			bool check_deltax=true;
+			bool check_deltay=true;
+			float deltax;
+			float deltay;
+
+			while(mapFile.peek()!=EOF)
+			{
+				mapFile >>latitude >> longitude>>depth;
+				if(begin)
+				{
+					maxx=minx=latitude;
+					maxy=miny=longitude;
+					begin=false;
+				} else {
+					if(check_deltax)
+					{
+						deltax=latitude-minx;
+						if(deltax!=0)
+						{
+							if(deltax<0)deltax=-deltax;
+							check_deltax=false;
+						}
+					};
+
+					if(check_deltay)
+					{
+						deltay=longitude-miny;
+						if(deltay!=0)
+						{
+							if(deltay<0)deltay=-deltay;
+							check_deltay=false;
+						}
+					};
+
+					if(maxx < latitude)maxx=latitude;
+			        else if(minx > latitude)minx=latitude;
+
+					if(maxy < longitude)maxy=longitude;
+					else if(miny > longitude)miny=longitude;
+				};
+			};
+
+			mapFile.close();
+			ifstream mapFile2;
+			context = gcnew marshal_context();
+			tmpFileName = context->marshal_as<const char*>(mapFileName);
+
+			mapFile2.open(tmpFileName, ios::in);
+			if (!mapFile2)
+			{
+				MessageBox::Show("Input file not found!", "Error!", MessageBoxButtons::OK, MessageBoxIcon::Error);
+				return false;
+			}
+
+			int sx = (int)((maxx-minx)/deltax)+1;
+			int sy = (int)((maxy-miny)/deltay)+1;
+			
+			mapSizeX = sx;
+			mapSizeY = sy;
+			startX_dgr = minx;
+			endX_dgr = maxx;
+			startY_dgr = miny;
+			endY_dgr = maxy;
+
+			if (terrian)
+				deallocateMemory(terrian);
+			terrian = allocateMemory(mapSizeY, mapSizeX);
+
+			float i=0, j=0;
+
+			while(mapFile2.peek()!=EOF)
+			{
+				mapFile2 >>latitude>>longitude>> depth;
+				i =  truncf(((float)sx / (float)(maxx- minx) * (float)(latitude - minx)));
+				j = truncf(((float)sy / (float)(maxy- miny) * (float)(longitude - miny)));
+				if ((int)i != sx && (int)j != sy)
+					terrian[(int)j][(int)i] = depth;
+			}
+
+			this->textBox_rangeX_start->Text = System::Convert::ToString(startX_dgr);
+			this->textBox_rangeX_end->Text = System::Convert::ToString(endX_dgr);
+			this->textBox_rangeY_start->Text = System::Convert::ToString(startY_dgr);
+			this->textBox_rangeY_end->Text = System::Convert::ToString(endY_dgr);
+			this->textBox_sizeX->Text = System::Convert::ToString(mapSizeX);
+			this->textBox_sizeY->Text = System::Convert::ToString(mapSizeY);
+			delta_x = (endX_dgr - startX_dgr) / (mapSizeX - 1);
+			delta_y = (endY_dgr - startY_dgr) / (mapSizeY - 1);
+			this->textBox_dx->Text = System::Convert::ToString(delta_x);
+			this->textBox_dy->Text = System::Convert::ToString(delta_y);
+
+			mapFile2.close();
+
+			return true;
+		}
+
+		float truncf(float x)
+		{       
+			return x < 0.0f ? ceilf(x-0.5) : floorf(x+0.5);
+		}
+
+		bool loadMapMtx()
+		{
+			ifstream mapFile;
+			
 			marshal_context^ context = gcnew marshal_context();
 			const char* tmpFileName = context->marshal_as<const char*>(mapFileName);
 				
@@ -814,152 +950,169 @@ namespace Wave_renew
 			// label1
 			// 
 			this->label1->AutoSize = true;
-			this->label1->Location = System::Drawing::Point(16, 44);
+			this->label1->Location = System::Drawing::Point(12, 36);
+			this->label1->Margin = System::Windows::Forms::Padding(2, 0, 2, 0);
 			this->label1->Name = L"label1";
-			this->label1->Size = System::Drawing::Size(63, 17);
+			this->label1->Size = System::Drawing::Size(49, 13);
 			this->label1->TabIndex = 0;
 			this->label1->Text = L"Range X";
 			// 
 			// label2
 			// 
 			this->label2->AutoSize = true;
-			this->label2->Location = System::Drawing::Point(130, 44);
+			this->label2->Location = System::Drawing::Point(98, 36);
+			this->label2->Margin = System::Windows::Forms::Padding(2, 0, 2, 0);
 			this->label2->Name = L"label2";
-			this->label2->Size = System::Drawing::Size(13, 17);
+			this->label2->Size = System::Drawing::Size(10, 13);
 			this->label2->TabIndex = 1;
 			this->label2->Text = L"-";
 			// 
 			// label3
 			// 
 			this->label3->AutoSize = true;
-			this->label3->Location = System::Drawing::Point(16, 71);
+			this->label3->Location = System::Drawing::Point(12, 58);
+			this->label3->Margin = System::Windows::Forms::Padding(2, 0, 2, 0);
 			this->label3->Name = L"label3";
-			this->label3->Size = System::Drawing::Size(63, 17);
+			this->label3->Size = System::Drawing::Size(49, 13);
 			this->label3->TabIndex = 2;
 			this->label3->Text = L"Range Y";
 			// 
 			// label4
 			// 
 			this->label4->AutoSize = true;
-			this->label4->Location = System::Drawing::Point(130, 71);
+			this->label4->Location = System::Drawing::Point(98, 58);
+			this->label4->Margin = System::Windows::Forms::Padding(2, 0, 2, 0);
 			this->label4->Name = L"label4";
-			this->label4->Size = System::Drawing::Size(13, 17);
+			this->label4->Size = System::Drawing::Size(10, 13);
 			this->label4->TabIndex = 3;
 			this->label4->Text = L"-";
 			// 
 			// textBox_rangeX_start
 			// 
-			this->textBox_rangeX_start->Location = System::Drawing::Point(85, 41);
+			this->textBox_rangeX_start->Location = System::Drawing::Point(64, 33);
+			this->textBox_rangeX_start->Margin = System::Windows::Forms::Padding(2);
 			this->textBox_rangeX_start->Name = L"textBox_rangeX_start";
 			this->textBox_rangeX_start->ReadOnly = true;
-			this->textBox_rangeX_start->Size = System::Drawing::Size(39, 22);
+			this->textBox_rangeX_start->Size = System::Drawing::Size(30, 20);
 			this->textBox_rangeX_start->TabIndex = 4;
 			this->textBox_rangeX_start->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// textBox_rangeY_start
 			// 
-			this->textBox_rangeY_start->Location = System::Drawing::Point(85, 68);
+			this->textBox_rangeY_start->Location = System::Drawing::Point(64, 55);
+			this->textBox_rangeY_start->Margin = System::Windows::Forms::Padding(2);
 			this->textBox_rangeY_start->Name = L"textBox_rangeY_start";
 			this->textBox_rangeY_start->ReadOnly = true;
-			this->textBox_rangeY_start->Size = System::Drawing::Size(39, 22);
+			this->textBox_rangeY_start->Size = System::Drawing::Size(30, 20);
 			this->textBox_rangeY_start->TabIndex = 5;
 			this->textBox_rangeY_start->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// textBox_rangeX_end
 			// 
-			this->textBox_rangeX_end->Location = System::Drawing::Point(149, 41);
+			this->textBox_rangeX_end->Location = System::Drawing::Point(112, 33);
+			this->textBox_rangeX_end->Margin = System::Windows::Forms::Padding(2);
 			this->textBox_rangeX_end->Name = L"textBox_rangeX_end";
 			this->textBox_rangeX_end->ReadOnly = true;
-			this->textBox_rangeX_end->Size = System::Drawing::Size(39, 22);
+			this->textBox_rangeX_end->Size = System::Drawing::Size(30, 20);
 			this->textBox_rangeX_end->TabIndex = 6;
 			this->textBox_rangeX_end->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// textBox_rangeY_end
 			// 
-			this->textBox_rangeY_end->Location = System::Drawing::Point(149, 68);
+			this->textBox_rangeY_end->Location = System::Drawing::Point(112, 55);
+			this->textBox_rangeY_end->Margin = System::Windows::Forms::Padding(2);
 			this->textBox_rangeY_end->Name = L"textBox_rangeY_end";
 			this->textBox_rangeY_end->ReadOnly = true;
-			this->textBox_rangeY_end->Size = System::Drawing::Size(39, 22);
+			this->textBox_rangeY_end->Size = System::Drawing::Size(30, 20);
 			this->textBox_rangeY_end->TabIndex = 7;
 			this->textBox_rangeY_end->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label5
 			// 
 			this->label5->AutoSize = true;
-			this->label5->Location = System::Drawing::Point(207, 71);
+			this->label5->Location = System::Drawing::Point(155, 58);
+			this->label5->Margin = System::Windows::Forms::Padding(2, 0, 2, 0);
 			this->label5->Name = L"label5";
-			this->label5->Size = System::Drawing::Size(48, 17);
+			this->label5->Size = System::Drawing::Size(37, 13);
 			this->label5->TabIndex = 8;
 			this->label5->Text = L"Size Y";
 			// 
 			// label6
 			// 
 			this->label6->AutoSize = true;
-			this->label6->Location = System::Drawing::Point(207, 44);
+			this->label6->Location = System::Drawing::Point(155, 36);
+			this->label6->Margin = System::Windows::Forms::Padding(2, 0, 2, 0);
 			this->label6->Name = L"label6";
-			this->label6->Size = System::Drawing::Size(48, 17);
+			this->label6->Size = System::Drawing::Size(37, 13);
 			this->label6->TabIndex = 9;
 			this->label6->Text = L"Size X";
 			// 
 			// textBox_sizeX
 			// 
-			this->textBox_sizeX->Location = System::Drawing::Point(261, 41);
+			this->textBox_sizeX->Location = System::Drawing::Point(196, 33);
+			this->textBox_sizeX->Margin = System::Windows::Forms::Padding(2);
 			this->textBox_sizeX->Name = L"textBox_sizeX";
 			this->textBox_sizeX->ReadOnly = true;
-			this->textBox_sizeX->Size = System::Drawing::Size(39, 22);
+			this->textBox_sizeX->Size = System::Drawing::Size(30, 20);
 			this->textBox_sizeX->TabIndex = 10;
 			this->textBox_sizeX->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// textBox_sizeY
 			// 
-			this->textBox_sizeY->Location = System::Drawing::Point(261, 68);
+			this->textBox_sizeY->Location = System::Drawing::Point(196, 55);
+			this->textBox_sizeY->Margin = System::Windows::Forms::Padding(2);
 			this->textBox_sizeY->Name = L"textBox_sizeY";
 			this->textBox_sizeY->ReadOnly = true;
-			this->textBox_sizeY->Size = System::Drawing::Size(39, 22);
+			this->textBox_sizeY->Size = System::Drawing::Size(30, 20);
 			this->textBox_sizeY->TabIndex = 11;
 			this->textBox_sizeY->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label7
 			// 
 			this->label7->AutoSize = true;
-			this->label7->Location = System::Drawing::Point(43, 99);
+			this->label7->Location = System::Drawing::Point(32, 80);
+			this->label7->Margin = System::Windows::Forms::Padding(2, 0, 2, 0);
 			this->label7->Name = L"label7";
-			this->label7->Size = System::Drawing::Size(22, 17);
+			this->label7->Size = System::Drawing::Size(18, 13);
 			this->label7->TabIndex = 12;
 			this->label7->Text = L"dx";
 			// 
 			// label8
 			// 
 			this->label8->AutoSize = true;
-			this->label8->Location = System::Drawing::Point(187, 99);
+			this->label8->Location = System::Drawing::Point(140, 80);
+			this->label8->Margin = System::Windows::Forms::Padding(2, 0, 2, 0);
 			this->label8->Name = L"label8";
-			this->label8->Size = System::Drawing::Size(23, 17);
+			this->label8->Size = System::Drawing::Size(18, 13);
 			this->label8->TabIndex = 13;
 			this->label8->Text = L"dy";
 			// 
 			// textBox_dx
 			// 
-			this->textBox_dx->Location = System::Drawing::Point(71, 96);
+			this->textBox_dx->Location = System::Drawing::Point(53, 78);
+			this->textBox_dx->Margin = System::Windows::Forms::Padding(2);
 			this->textBox_dx->Name = L"textBox_dx";
 			this->textBox_dx->ReadOnly = true;
-			this->textBox_dx->Size = System::Drawing::Size(87, 22);
+			this->textBox_dx->Size = System::Drawing::Size(66, 20);
 			this->textBox_dx->TabIndex = 14;
 			this->textBox_dx->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// textBox_dy
 			// 
-			this->textBox_dy->Location = System::Drawing::Point(216, 96);
+			this->textBox_dy->Location = System::Drawing::Point(162, 78);
+			this->textBox_dy->Margin = System::Windows::Forms::Padding(2);
 			this->textBox_dy->Name = L"textBox_dy";
 			this->textBox_dy->ReadOnly = true;
-			this->textBox_dy->Size = System::Drawing::Size(87, 22);
+			this->textBox_dy->Size = System::Drawing::Size(66, 20);
 			this->textBox_dy->TabIndex = 15;
 			this->textBox_dy->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// textBox_outTime
 			// 
-			this->textBox_outTime->Location = System::Drawing::Point(85, 165);
+			this->textBox_outTime->Location = System::Drawing::Point(64, 134);
+			this->textBox_outTime->Margin = System::Windows::Forms::Padding(2);
 			this->textBox_outTime->Name = L"textBox_outTime";
-			this->textBox_outTime->Size = System::Drawing::Size(62, 22);
+			this->textBox_outTime->Size = System::Drawing::Size(48, 20);
 			this->textBox_outTime->TabIndex = 22;
 			this->textBox_outTime->Text = L"0";
 			this->textBox_outTime->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
@@ -967,9 +1120,10 @@ namespace Wave_renew
 			// 
 			// textBox_calcTime
 			// 
-			this->textBox_calcTime->Location = System::Drawing::Point(85, 134);
+			this->textBox_calcTime->Location = System::Drawing::Point(64, 109);
+			this->textBox_calcTime->Margin = System::Windows::Forms::Padding(2);
 			this->textBox_calcTime->Name = L"textBox_calcTime";
-			this->textBox_calcTime->Size = System::Drawing::Size(62, 22);
+			this->textBox_calcTime->Size = System::Drawing::Size(48, 20);
 			this->textBox_calcTime->TabIndex = 21;
 			this->textBox_calcTime->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			this->textBox_calcTime->TextChanged += gcnew System::EventHandler(this, &mainForm::textBox_calcTime_TextChanged);
@@ -977,27 +1131,30 @@ namespace Wave_renew
 			// label9
 			// 
 			this->label9->AutoSize = true;
-			this->label9->Location = System::Drawing::Point(15, 168);
+			this->label9->Location = System::Drawing::Point(11, 136);
+			this->label9->Margin = System::Windows::Forms::Padding(2, 0, 2, 0);
 			this->label9->Name = L"label9";
-			this->label9->Size = System::Drawing::Size(66, 17);
+			this->label9->Size = System::Drawing::Size(50, 13);
 			this->label9->TabIndex = 20;
 			this->label9->Text = L"Out Time";
 			// 
 			// label10
 			// 
 			this->label10->AutoSize = true;
-			this->label10->Location = System::Drawing::Point(15, 137);
+			this->label10->Location = System::Drawing::Point(11, 111);
+			this->label10->Margin = System::Windows::Forms::Padding(2, 0, 2, 0);
 			this->label10->Name = L"label10";
-			this->label10->Size = System::Drawing::Size(66, 17);
+			this->label10->Size = System::Drawing::Size(51, 13);
 			this->label10->TabIndex = 19;
 			this->label10->Text = L"CalcTime";
 			// 
 			// button_applyParameters
 			// 
 			this->button_applyParameters->Enabled = false;
-			this->button_applyParameters->Location = System::Drawing::Point(19, 194);
+			this->button_applyParameters->Location = System::Drawing::Point(14, 158);
+			this->button_applyParameters->Margin = System::Windows::Forms::Padding(2);
 			this->button_applyParameters->Name = L"button_applyParameters";
-			this->button_applyParameters->Size = System::Drawing::Size(286, 28);
+			this->button_applyParameters->Size = System::Drawing::Size(214, 23);
 			this->button_applyParameters->TabIndex = 23;
 			this->button_applyParameters->Text = L"Apply Parameters";
 			this->button_applyParameters->UseVisualStyleBackColor = true;
@@ -1006,9 +1163,10 @@ namespace Wave_renew
 			// button_startCalc
 			// 
 			this->button_startCalc->Enabled = false;
-			this->button_startCalc->Location = System::Drawing::Point(19, 241);
+			this->button_startCalc->Location = System::Drawing::Point(14, 196);
+			this->button_startCalc->Margin = System::Windows::Forms::Padding(2);
 			this->button_startCalc->Name = L"button_startCalc";
-			this->button_startCalc->Size = System::Drawing::Size(83, 28);
+			this->button_startCalc->Size = System::Drawing::Size(62, 23);
 			this->button_startCalc->TabIndex = 24;
 			this->button_startCalc->Text = L"Start";
 			this->button_startCalc->UseVisualStyleBackColor = true;
@@ -1017,9 +1175,10 @@ namespace Wave_renew
 			// button_pauseCalc
 			// 
 			this->button_pauseCalc->Enabled = false;
-			this->button_pauseCalc->Location = System::Drawing::Point(124, 241);
+			this->button_pauseCalc->Location = System::Drawing::Point(93, 196);
+			this->button_pauseCalc->Margin = System::Windows::Forms::Padding(2);
 			this->button_pauseCalc->Name = L"button_pauseCalc";
-			this->button_pauseCalc->Size = System::Drawing::Size(83, 28);
+			this->button_pauseCalc->Size = System::Drawing::Size(62, 23);
 			this->button_pauseCalc->TabIndex = 25;
 			this->button_pauseCalc->Text = L"Pause";
 			this->button_pauseCalc->UseVisualStyleBackColor = true;
@@ -1028,9 +1187,10 @@ namespace Wave_renew
 			// button_stopCalc
 			// 
 			this->button_stopCalc->Enabled = false;
-			this->button_stopCalc->Location = System::Drawing::Point(222, 241);
+			this->button_stopCalc->Location = System::Drawing::Point(166, 196);
+			this->button_stopCalc->Margin = System::Windows::Forms::Padding(2);
 			this->button_stopCalc->Name = L"button_stopCalc";
-			this->button_stopCalc->Size = System::Drawing::Size(83, 28);
+			this->button_stopCalc->Size = System::Drawing::Size(62, 23);
 			this->button_stopCalc->TabIndex = 26;
 			this->button_stopCalc->Text = L"Stop";
 			this->button_stopCalc->UseVisualStyleBackColor = true;
@@ -1038,42 +1198,42 @@ namespace Wave_renew
 			// 
 			// menuStrip_main
 			// 
-			this->menuStrip_main->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(1) { this->ToolStrip_file });
+			this->menuStrip_main->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(1) {this->ToolStrip_file});
 			this->menuStrip_main->Location = System::Drawing::Point(0, 0);
 			this->menuStrip_main->Name = L"menuStrip_main";
-			this->menuStrip_main->Size = System::Drawing::Size(312, 28);
+			this->menuStrip_main->Padding = System::Windows::Forms::Padding(4, 2, 0, 2);
+			this->menuStrip_main->Size = System::Drawing::Size(236, 24);
 			this->menuStrip_main->TabIndex = 27;
 			this->menuStrip_main->Text = L"menuStrip1";
 			// 
 			// ToolStrip_file
 			// 
-			this->ToolStrip_file->DropDownItems->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(2) {
-				this->ToolStrip_file_openMap,
-					this->ToolStrip_file_openConfig
-			});
+			this->ToolStrip_file->DropDownItems->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(2) {this->ToolStrip_file_openMap, 
+				this->ToolStrip_file_openConfig});
 			this->ToolStrip_file->Name = L"ToolStrip_file";
-			this->ToolStrip_file->Size = System::Drawing::Size(44, 24);
-			this->ToolStrip_file->Text = L"FIle";
+			this->ToolStrip_file->Size = System::Drawing::Size(37, 20);
+			this->ToolStrip_file->Text = L"File";
 			// 
 			// ToolStrip_file_openMap
 			// 
 			this->ToolStrip_file_openMap->Name = L"ToolStrip_file_openMap";
-			this->ToolStrip_file_openMap->Size = System::Drawing::Size(162, 24);
+			this->ToolStrip_file_openMap->Size = System::Drawing::Size(152, 22);
 			this->ToolStrip_file_openMap->Text = L"Open Map";
 			this->ToolStrip_file_openMap->Click += gcnew System::EventHandler(this, &mainForm::openToolStripMenuItem_Click);
 			// 
 			// ToolStrip_file_openConfig
 			// 
 			this->ToolStrip_file_openConfig->Name = L"ToolStrip_file_openConfig";
-			this->ToolStrip_file_openConfig->Size = System::Drawing::Size(162, 24);
+			this->ToolStrip_file_openConfig->Size = System::Drawing::Size(152, 22);
 			this->ToolStrip_file_openConfig->Text = L"Open Config";
 			this->ToolStrip_file_openConfig->Click += gcnew System::EventHandler(this, &mainForm::openConfigToolStripMenuItem_Click);
 			// 
 			// textBox_isobath
 			// 
-			this->textBox_isobath->Location = System::Drawing::Point(238, 133);
+			this->textBox_isobath->Location = System::Drawing::Point(178, 108);
+			this->textBox_isobath->Margin = System::Windows::Forms::Padding(2);
 			this->textBox_isobath->Name = L"textBox_isobath";
-			this->textBox_isobath->Size = System::Drawing::Size(62, 22);
+			this->textBox_isobath->Size = System::Drawing::Size(48, 20);
 			this->textBox_isobath->TabIndex = 28;
 			this->textBox_isobath->Text = L"-10";
 			this->textBox_isobath->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
@@ -1082,19 +1242,21 @@ namespace Wave_renew
 			// label11
 			// 
 			this->label11->AutoSize = true;
-			this->label11->Location = System::Drawing::Point(178, 136);
+			this->label11->Location = System::Drawing::Point(134, 110);
+			this->label11->Margin = System::Windows::Forms::Padding(2, 0, 2, 0);
 			this->label11->Name = L"label11";
-			this->label11->Size = System::Drawing::Size(54, 17);
+			this->label11->Size = System::Drawing::Size(42, 13);
 			this->label11->TabIndex = 29;
 			this->label11->Text = L"Isobath";
 			// 
 			// checkBox_autoSaveLayers
 			// 
 			this->checkBox_autoSaveLayers->AutoSize = true;
-			this->checkBox_autoSaveLayers->Location = System::Drawing::Point(158, 167);
+			this->checkBox_autoSaveLayers->Location = System::Drawing::Point(118, 136);
+			this->checkBox_autoSaveLayers->Margin = System::Windows::Forms::Padding(2);
 			this->checkBox_autoSaveLayers->Name = L"checkBox_autoSaveLayers";
 			this->checkBox_autoSaveLayers->RightToLeft = System::Windows::Forms::RightToLeft::Yes;
-			this->checkBox_autoSaveLayers->Size = System::Drawing::Size(142, 21);
+			this->checkBox_autoSaveLayers->Size = System::Drawing::Size(110, 17);
 			this->checkBox_autoSaveLayers->TabIndex = 31;
 			this->checkBox_autoSaveLayers->Text = L"Auto Save Layers";
 			this->checkBox_autoSaveLayers->UseVisualStyleBackColor = true;
@@ -1102,9 +1264,9 @@ namespace Wave_renew
 			// 
 			// mainForm
 			// 
-			this->AutoScaleDimensions = System::Drawing::SizeF(8, 16);
+			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->ClientSize = System::Drawing::Size(312, 283);
+			this->ClientSize = System::Drawing::Size(236, 230);
 			this->Controls->Add(this->checkBox_autoSaveLayers);
 			this->Controls->Add(this->label11);
 			this->Controls->Add(this->textBox_isobath);
@@ -1135,9 +1297,10 @@ namespace Wave_renew
 			this->Controls->Add(this->menuStrip_main);
 			this->KeyPreview = true;
 			this->MainMenuStrip = this->menuStrip_main;
+			this->Margin = System::Windows::Forms::Padding(2);
 			this->MaximizeBox = false;
-			this->MaximumSize = System::Drawing::Size(330, 330);
-			this->MinimumSize = System::Drawing::Size(330, 298);
+			this->MaximumSize = System::Drawing::Size(252, 275);
+			this->MinimumSize = System::Drawing::Size(252, 249);
 			this->Name = L"mainForm";
 			this->Text = L"Tsunami";
 			this->menuStrip_main->ResumeLayout(false);
@@ -1315,6 +1478,7 @@ namespace Wave_renew
 		System::Void openToolStripMenuItem_Click(System::Object^  sender, System::EventArgs^  e)
 		{
 			OpenFileDialog^ openMap = gcnew OpenFileDialog;
+			openMap->Filter = "*.dat|*.dat|*.mtx|*.mtx";
 			openMap->InitialDirectory = ".";
 			openMap->RestoreDirectory = true;
 
@@ -1328,21 +1492,49 @@ namespace Wave_renew
 					return;
 
 				this->Enabled = false;
-				if (this->loadMap())
-				{
-					MessageBox::Show("Map Loading Completed!", "Information!", MessageBoxButtons::OK, MessageBoxIcon::Information);
 
-					if (vf)
-						delete vf;
-					vf = gcnew ViewForm();
-					if (mainBitmap)
-						delete mainBitmap;
-					this->mainBitmap = gcnew Bitmap(mapSizeX, mapSizeY);
-					vf->pictureBox_main->Image = this->mainBitmap;
-					mainGraphics = Graphics::FromImage(this->mainBitmap);
-					showBottom();
-					vf->Show();
-					this->Enabled = true;
+				marshal_context^ context = gcnew marshal_context();
+				const char* fileExt = context->marshal_as<const char*>(openMap->SafeFileName);
+				char drive[56], path[56], name[56], ext[56];
+				_splitpath(fileExt, drive, path, name, ext);
+
+				if (strcmp(ext,".dat") == 0) 
+				{
+					if (this->loadMapDat())
+					{
+						MessageBox::Show("Map Loading Completed!", "Information!", MessageBoxButtons::OK, MessageBoxIcon::Information);
+
+						if (vf)
+							delete vf;
+						vf = gcnew ViewForm();
+						if (mainBitmap)
+							delete mainBitmap;
+						this->mainBitmap = gcnew Bitmap(mapSizeX, mapSizeY);
+						vf->pictureBox_main->Image = this->mainBitmap;
+						mainGraphics = Graphics::FromImage(this->mainBitmap);
+						showBottom();
+						vf->Show();
+						this->Enabled = true;
+					}
+				}
+				else if (strcmp(ext,".mtx") == 0)
+				{
+					if (this->loadMapMtx())
+					{
+						MessageBox::Show("Map Loading Completed!", "Information!", MessageBoxButtons::OK, MessageBoxIcon::Information);
+
+						if (vf)
+							delete vf;
+						vf = gcnew ViewForm();
+						if (mainBitmap)
+							delete mainBitmap;
+						this->mainBitmap = gcnew Bitmap(mapSizeX, mapSizeY);
+						vf->pictureBox_main->Image = this->mainBitmap;
+						mainGraphics = Graphics::FromImage(this->mainBitmap);
+						showBottom();
+						vf->Show();
+						this->Enabled = true;
+					}
 				}
 				else
 					MessageBox::Show("Map Loading Error!", "Error!", MessageBoxButtons::OK, MessageBoxIcon::Error);
