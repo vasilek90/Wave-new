@@ -244,7 +244,7 @@ namespace Wave_renew
 			if (!waveFrontCurrent)
 				return;
 
-			double **a = allocateMemory(mapSizeY, mapSizeX);
+			//double **a = allocateMemory(mapSizeY, mapSizeX);
 			for (int y = 0; y < mapSizeY; y++)
 				for (int x = 0; x < mapSizeX; x++)
 					if (terrian[y][x] < 0)
@@ -361,21 +361,25 @@ namespace Wave_renew
 			}
 			delete context;
 
-			float minx;
-			float maxx;
-			float miny;
-			float maxy;
-			float longitude;
-			float latitude;
-			float depth;
+			long double minx;
+			long double maxx;
+			long double miny;
+			long double maxy;
+			long double longitude;
+			long double latitude;
+			long double depth;
 			bool begin=true;
 			bool check_deltax=true;
 			bool check_deltay=true;
-			float deltax;
-			float deltay;
+			long double deltax;
+			long double deltay;
 
+			//FILE* infile;
+			//infile = fopen(tmpFileName, "rt");
+			//while(feof(infile)==0)
 			while(mapFile.peek()!=EOF)
 			{
+				//fscanf(infile,"%f %f %f", &latitude, &longitude, &depth);
 				mapFile >>latitude >> longitude>>depth;
 				if(begin)
 				{
@@ -393,23 +397,23 @@ namespace Wave_renew
 						}
 					};
 
-					if(check_deltay)
+				if(check_deltay)
+				{
+					deltay=longitude-miny;
+					if(deltay!=0)
 					{
-						deltay=longitude-miny;
-						if(deltay!=0)
-						{
-							if(deltay<0)deltay=-deltay;
-							check_deltay=false;
-						}
-					};
-
-					if(maxx < latitude)maxx=latitude;
-			        else if(minx > latitude)minx=latitude;
-
-					if(maxy < longitude)maxy=longitude;
-					else if(miny > longitude)miny=longitude;
+						if(deltay<0)deltay=-deltay;
+						check_deltay=false;
+					}
 				};
-			};
+
+        if(maxx < latitude)maxx=latitude;
+        else if(minx > latitude)minx=latitude;
+
+        if(maxy < longitude)maxy=longitude;
+        else if(miny > longitude)miny=longitude;
+      };
+    };
 
 			mapFile.close();
 			ifstream mapFile2;
@@ -417,16 +421,16 @@ namespace Wave_renew
 			tmpFileName = context->marshal_as<const char*>(mapFileName);
 
 			mapFile2.open(tmpFileName, ios::in);
+			//mapFile2.seekg(ios::beg);
 			if (!mapFile2)
 			{
 				MessageBox::Show("Input file not found!", "Error!", MessageBoxButtons::OK, MessageBoxIcon::Error);
 				return false;
 			}
-
-			int sx = (int)((maxx-minx)/deltax)+1;
-			int sy = (int)((maxy-miny)/deltay)+1;
+	int sx = (int)((maxx-minx)/deltax)+1;
+    int sy = (int)((maxy-miny)/deltay)+1;
 			
-			mapSizeX = sx;
+			mapSizeX = sx;//nnnnn
 			mapSizeY = sy;
 			startX_dgr = minx;
 			endX_dgr = maxx;
@@ -437,17 +441,46 @@ namespace Wave_renew
 				deallocateMemory(terrian);
 			terrian = allocateMemory(mapSizeY, mapSizeX);
 
-			float i=0, j=0;
-
+			long double i=0, j=0;
+			ofstream mapFile3;
+			mapFile3.open("out.txt", ios::out);
+			int correcti = 0, correctj =0, previ = 0, prevj =0;
 			while(mapFile2.peek()!=EOF)
 			{
 				mapFile2 >>latitude>>longitude>> depth;
-				i =  truncf(((float)sx / (float)(maxx- minx) * (float)(latitude - minx)));
-				j = truncf(((float)sy / (float)(maxy- miny) * (float)(longitude - miny)));
+				long double tmpi, tmpj;
+				tmpi = ((long double)sx / (long double)(maxx- minx) * (long double)(latitude - minx));
+				tmpj = ((long double)sy / (long double)(maxy- miny) * (long double)(longitude - miny));
+				i =  truncf(tmpi) - correcti;
+				j = truncf(tmpj) - correctj;
+				if ((((int)i - previ)>1) && (i != 0))
+				{
+					correcti++;
+					i--;
+				}
+				if ((((int)j - prevj)>1) && (j != 0))
+				{
+					correctj++;
+					j--;
+				}
+
+				if (i<0)
+				{
+					i=0;
+				}
+				if (j<0)
+				{
+					j=0;
+				}
+
+				previ = i;
+				prevj = j;
+				
+				mapFile3 << i <<" "<<j<<" "<<depth<<" "<<correcti<<" "<<correctj<<endl;
 				if ((int)i != sx && (int)j != sy)
 					terrian[(int)j][(int)i] = depth;
 			}
-
+			mapFile3.close();
 			this->textBox_rangeX_start->Text = System::Convert::ToString(startX_dgr);
 			this->textBox_rangeX_end->Text = System::Convert::ToString(endX_dgr);
 			this->textBox_rangeY_start->Text = System::Convert::ToString(startY_dgr);
@@ -852,7 +885,7 @@ namespace Wave_renew
 					int s = (int)(delta_t[0] * currentCalculationTime) - h * 3600 - m * 60;
 
 					Invoke_showRealTime(h, m, s);
-					//showDisturbance();
+					showDisturbance();
 
 					if (this->checkBox_autoSaveLayers->Checked)
 						OutHeights(currentCalculationTime);
@@ -1495,8 +1528,11 @@ namespace Wave_renew
 
 				marshal_context^ context = gcnew marshal_context();
 				const char* fileExt = context->marshal_as<const char*>(openMap->SafeFileName);
+				//char* absfilename = strdup(openMap->SafeFileName);//"C:\temp\file.txt";
 				char drive[56], path[56], name[56], ext[56];
 				_splitpath(fileExt, drive, path, name, ext);
+			
+				printf("%s%s", name, ext); // выведет file.txt
 
 				if (strcmp(ext,".dat") == 0) 
 				{

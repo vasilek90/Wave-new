@@ -4,20 +4,20 @@
     <Brick>
       <Coordinates>
         <Point>
-          <x>149,73</x>
-          <y>44,108</y>
+          <x>141,944</x>
+          <y>37,403</y>
         </Point>
         <Point>
-          <x>154,03</x>
-          <y>46,577</y>
+          <x>142,422</x>
+          <y>39,14</y>
         </Point>
         <Point>
-          <x>149,77</x>
-          <y>45,084</y>
+          <x>142,433</x>
+          <y>37,21</y>
         </Point>
         <Point>
-          <x>154,10</x>
-          <y>47,686</y>
+          <x>142,911</x>
+          <y>38,947</y>
         </Point>
       </Coordinates>
       <Scenario stepq="1">
