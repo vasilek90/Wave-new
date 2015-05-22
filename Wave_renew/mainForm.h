@@ -315,34 +315,54 @@ namespace Wave_renew
 
 		void OutHeights(int time)
 		{
-			char tmpFileName[14];
-
-			sprintf_s(tmpFileName, "out_t=%06d", time);
+			char tmpFileName[20];
+			sprintf_s(tmpFileName, "out_t=%06d.grd", time);
 
 			ofstream outFile;
 			outFile.open(tmpFileName, ios::out);
 
+			double maxPoint(-999999), minPoint(999999);
+			for (int i = 0; i < mapSizeY; i++)
+			{
+				double h(0.0);
+				for (int j = 0; j < mapSizeX; j++)
+				{
+					if (terrian[i][j] < 0)
+						h = waveFrontCurrent[i][j];
+					else
+						h = terrian[i][j] + LAND_UP;
+					if (h > maxPoint)
+						maxPoint = h;
+					if (h < minPoint)
+						minPoint = h;
+				}
+			}
+
+			outFile << "DSAA" << endl;
+			outFile << mapSizeX << " " << mapSizeY << endl;
+			outFile << startX_dgr << " " << endX_dgr << endl;
+			outFile << startY_dgr << " " << endY_dgr << endl;
+			outFile << minPoint << " " << maxPoint << endl;
 			for (int i = 0; i < mapSizeY; i++)
 			{
 				double h(0.0);
 				for (int j = 0; j < mapSizeX - 1; j++)
 				{
 					if (terrian[i][j] < 0)
-						h = heightsFront[i][j];
+						h = waveFrontCurrent[i][j];
 					else
-						h = terrian[i][j] + LAND_UP;
+						h = 0;
 
-					outFile << h << "; ";
+					outFile << h << " ";
 				}
 
 				if (terrian[i][mapSizeX - 1] < 0)
-					h = heightsFront[i][mapSizeX - 1];
+					h = waveFrontCurrent[i][mapSizeX - 1];
 				else
-					h = terrian[i][mapSizeX - 1] + LAND_UP;
+					h = 0;
 
 				outFile << h << endl;
 			}
-
 			outFile.close();
 		}
 
