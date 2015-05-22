@@ -774,6 +774,7 @@ namespace Wave_renew
 							h[y][x] = terrian[y][x];
 
 					waveFrontOld[y][x] = 0;
+					waveFrontCurrent[y][x] = 0;
 					uOld[y][x] = 0;
 					vOld[y][x] = 0;
 					terr_up[y][x] = 0;
